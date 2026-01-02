@@ -1,0 +1,21 @@
+# --- OS dumb file ---
+.DS_Store
+Thumbs.db
+
+# --- PlatformIO & VS Code ---
+.pio/
+.vscode/
+**/.vscode/
+
+# --- Python (Venv & Cache) ---
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Large File Video nặng ---
+*.mp4
+*.avi
+*.mov
+*.h264
+
