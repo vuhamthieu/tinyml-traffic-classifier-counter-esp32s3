@@ -1,7 +1,7 @@
 import cv2
 import os
 
-VIDEO_PATH = 'data_engineering/raw_videos/traffic_video.mp4'
+VIDEO_PATH = 'data_engineering/raw_videos/traffic_video2.mp4'
 OUTPUT_DIR = 'data_engineering/dataset'
 
 FRAME_INTERVAL = 30    
@@ -18,6 +18,15 @@ def extract_frames():
         print("Download video to 'data_engineering/raw_videos/'.")
         return
 
+    existing_files = [f for f in os.listdir(OUTPUT_DIR) if f.startswith('data_') and f.endswith('.jpg')]
+    if existing_files:
+        existing_numbers = [int(f.split('_')[1].split('.')[0]) for f in existing_files]
+        start_index = max(existing_numbers) + 1
+        print(f"-> Found {len(existing_files)} existing images. Starting from data_{start_index:03d}.jpg")
+    else:
+        start_index = 0
+        print(f"-> No existing images found. Starting from data_000.jpg")
+
     cap = cv2.VideoCapture(VIDEO_PATH)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print(f"-> Processing Video... (Total: {total_frames} frames)")
@@ -28,7 +37,7 @@ def extract_frames():
     while cap.isOpened() and saved_count < MAX_IMAGES:
         ret, frame = cap.read()
         if not ret:
-            breakVideo
+            break 
 
         if count % FRAME_INTERVAL == 0:
             h, w, _ = frame.shape
@@ -40,7 +49,7 @@ def extract_frames():
 
             final_img = cv2.resize(cropped, (TARGET_SIZE, TARGET_SIZE))
 
-            filename = os.path.join(OUTPUT_DIR, f"data_{saved_count:03d}.jpg")
+            filename = os.path.join(OUTPUT_DIR, f"data_{start_index + saved_count:03d}.jpg") 
             cv2.imwrite(filename, final_img)
             
             print(f"Saved: {filename}", end='\r')
@@ -50,7 +59,7 @@ def extract_frames():
 
     cap.release()
     print(f"\n\n===DONE===")
-    print(f"Saved {saved_count} to '{OUTPUT_DIR}'")
+    print(f"Saved {saved_count} images to '{OUTPUT_DIR}'")
 
 if __name__ == "__main__":
     extract_frames()
