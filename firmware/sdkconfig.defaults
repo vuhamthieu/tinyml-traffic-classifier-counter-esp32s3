@@ -1,0 +1,34 @@
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240
+
+# ── Performance: compile with -O2 ─────────────────────────────────────────────
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# ── Logging: WARN keeps COUNTED/ERROR visible, drops routine INFO ─────────────
+CONFIG_LOG_DEFAULT_LEVEL_WARN=y
+CONFIG_LOG_DEFAULT_LEVEL=2
+
+# ── Data cache: 64-byte lines for sequential PSRAM tensor weight reads ─────────
+CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
+CONFIG_ESP32S3_DATA_CACHE_LINE_SIZE=64
+
+# ── WiFi: reduce internal RAM pressure during inference ───────────────────────
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=4
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=16
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=16
+
+# ── ESP-DL power management (disable to avoid RTOS conflicts during inference) ─
+CONFIG_DL_PMU_SUPPORT_POWER_MANAGEMENT=n
+
+# ── vehicle_detect component: store .espdl in dedicated flash partition ────────
+# flash_partition = separate "espdet_det" partition (idf.py flash auto-programs it)
+# flash_rodata    = embedded in app binary (use this if you remove the partition)
+CONFIG_ESPDET_DETECT_MODEL_IN_FLASH_PARTITION=y

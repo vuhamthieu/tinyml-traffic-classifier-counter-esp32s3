@@ -1,0 +1,50 @@
+menu "models: vehicle_detect"
+    config FLASH_ESPDET_PICO_224_224_VEHICLE
+        bool "flash espdet_pico_224_224_vehicle"
+        depends on !CAT_DETECT_MODEL_IN_SDCARD
+        default y
+
+
+    choice
+        prompt "default"
+        default ESPDET_PICO_224_224_VEHICLE
+        help
+            default vehicle_detect model
+        config ESPDET_PICO_224_224_VEHICLE
+            bool "espdet_pico_224_224_vehicle"
+            depends on ESPDET_DETECT_MODEL_IN_SDCARD || FLASH_ESPDET_PICO_224_224_VEHICLE
+    endchoice
+
+
+    config DEFAULT_ESPDET_DETECT_MODEL
+        int
+        default 0 if ESPDET_PICO_224_224_VEHICLE
+
+    choice
+        prompt "model location"
+        default ESPDET_DETECT_MODEL_IN_FLASH_RODATA
+        help
+            espdet_detect model location
+        config ESPDET_DETECT_MODEL_IN_FLASH_RODATA
+            bool "flash_rodata"
+        config ESPDET_DETECT_MODEL_IN_FLASH_PARTITION
+            bool "flash_partition"
+        config ESPDET_DETECT_MODEL_IN_SDCARD
+            bool "sdcard"
+
+    endchoice
+
+    config ESPDET_DETECT_MODEL_LOCATION
+        int
+        default 0 if ESPDET_DETECT_MODEL_IN_FLASH_RODATA
+        default 1 if ESPDET_DETECT_MODEL_IN_FLASH_PARTITION
+        default 2 if ESPDET_DETECT_MODEL_IN_SDCARD
+
+    config ESPDET_DETECT_MODEL_SDCARD_DIR
+        string "espdet_detect model sdcard dir"
+        default "models/s3" if IDF_TARGET_ESP32S3
+        default "models/p4" if IDF_TARGET_ESP32P4
+        depends on ESPDET_DETECT_MODEL_IN_SDCARD
+        help
+            Directory of models relative to sdcard mount point.
+endmenu

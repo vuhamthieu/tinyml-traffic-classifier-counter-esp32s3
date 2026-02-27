@@ -1,0 +1,6 @@
+version: "0.1.1"
+license: "MIT"
+description: vehicle detect model.
+url: https://github.com/espressif/esp-dl/tree/master/models/vehicle_detect
+dependencies:
+  espressif/esp-dl: ">=3.1.3"

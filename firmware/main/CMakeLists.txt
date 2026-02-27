@@ -1,3 +1,22 @@
-idf_component_register(SRCS "main.cpp"
-                    INCLUDE_DIRS "."
-                    REQUIRES lib nvs_flash esp_http_server esp_wifi)
+idf_component_register(SRCS
+                           "main.cpp"
+                           "camera.cpp"
+                           "motion.cpp"
+                           "tracker.cpp"
+                           "overlay.cpp"
+                           "jpeg_stream.cpp"
+                           "wifi.cpp"
+                           "mqtt.cpp"
+                           "http_server.cpp"
+                       INCLUDE_DIRS "."
+                       REQUIRES
+                           vehicle_detect
+                           espressif__esp32-camera
+                           espressif__esp-dl
+                           esp_wifi
+                           esp_http_server
+                           esp_event
+                           esp_timer
+                           mqtt
+                           nvs_flash
+                           esp_psram)

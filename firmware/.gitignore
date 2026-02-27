@@ -71,6 +71,9 @@ Thumbs.db
 ehthumbs.db
 Desktop.ini
 
+# Secret
+main/secrets.h
+
 # User-specific configuration files
 *.user
 *.workspace # General workspace files, can be from various tools
