@@ -13,7 +13,7 @@ __pycache__/
 *.pyc
 *.pyo
 
-# --- Large File Video nặng ---
+# --- Large File Video ---
 *.mp4
 *.avi
 *.mov
