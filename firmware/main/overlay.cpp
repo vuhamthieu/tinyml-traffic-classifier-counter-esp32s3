@@ -14,6 +14,13 @@ void overlay_update_boxes(const tracked_object_t *tracks, int count)
     portENTER_CRITICAL(&g_ovl_mux);
     g_ovl_box_count = 0;
     for (int t = 0; t < count && (int)g_ovl_box_count < MAX_OVL_BOXES; t++) {
+        // Display-level ghost filter: suppress a track that has been seen
+        // many times but barely moved — it is a static background region.
+        // This kicks in sooner than the tracker expiry to clean up the overlay
+        // quickly (within ~1 s of the background detection appearing).
+        if (tracks[t].detection_count >= GHOST_DISP_FRAMES &&
+            tracks[t].travel < GHOST_TRAVEL_THRESHOLD)
+            continue;
         g_ovl_boxes[g_ovl_box_count++] = {
             tracks[t].box[0], tracks[t].box[1],
             tracks[t].box[2], tracks[t].box[3],
@@ -60,7 +67,7 @@ void draw_overlay(uint8_t *buf, int fw, int fh)
     int sc = (sx < sy) ? sx : sy;
     int ox = (fw - ((MODEL_W * sc) >> FP)) / 2;
     int oy = (fh - ((MODEL_H * sc) >> FP)) / 2;
-    const uint16_t cls_col[3] = {0x07E0u, 0x001Fu, 0xF800u}; // big=green, car=blue, moto=red
+    const uint16_t cls_col[2] = {0x001Fu, 0xF800u}; // car=blue, moto=red
 
     struct { int x1, y1, x2, y2; uint16_t col; } rects[MAX_OVL_BOXES];
     uint32_t cnt;
@@ -78,10 +85,15 @@ void draw_overlay(uint8_t *buf, int fw, int fh)
     for (uint32_t b = 0; b < cnt; b++)
         draw_rect(buf, fw, fh, rects[b].x1, rects[b].y1, rects[b].x2, rects[b].y2, rects[b].col);
 
-    int line_y = oy + ((COUNT_LINE_Y * sc) >> FP);
+    // Draw the counting zone as two dashed yellow lines (top + bottom of band)
+    int zone_top_y    = oy + ((COUNT_ZONE_TOP    * sc) >> FP);
+    int zone_bottom_y = oy + ((COUNT_ZONE_BOTTOM * sc) >> FP);
     for (int x = 0; x < fw; x++) {
-        set_pixel(buf, fw, fh, x, line_y,     0xFFE0u);
-        set_pixel(buf, fw, fh, x, line_y + 1, 0xFFE0u);
-        set_pixel(buf, fw, fh, x, line_y + 2, 0xFFE0u);
+        // dash pattern: 8 px on, 4 px off
+        uint16_t col = ((x / 8) % 2 == 0) ? 0xFFE0u : 0x0000u;
+        set_pixel(buf, fw, fh, x, zone_top_y,        col);
+        set_pixel(buf, fw, fh, x, zone_top_y    + 1, col);
+        set_pixel(buf, fw, fh, x, zone_bottom_y,     col);
+        set_pixel(buf, fw, fh, x, zone_bottom_y + 1, col);
     }
 }

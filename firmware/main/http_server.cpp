@@ -19,12 +19,11 @@ static esp_err_t counts_handler(httpd_req_t *req)
     char buf[300];
     xSemaphoreTake(counter_mutex, portMAX_DELAY);
     int len = snprintf(buf, sizeof(buf),
-        "{\"big_vehicle\":%lu,\"car\":%lu,\"motorcycle\":%lu,\"total\":%lu"
+        "{\"car\":%lu,\"motorcycle\":%lu,\"total\":%lu"
         ",\"fps\":%.1f,\"free_heap\":%lu,\"tracking\":%d}",
-        (unsigned long)vehicle_counts[CLASS_BIG_VEHICLE],
         (unsigned long)vehicle_counts[CLASS_CAR],
         (unsigned long)vehicle_counts[CLASS_MOTORCYCLE],
-        (unsigned long)(vehicle_counts[0] + vehicle_counts[1] + vehicle_counts[2]),
+        (unsigned long)(vehicle_counts[CLASS_CAR] + vehicle_counts[CLASS_MOTORCYCLE]),
         current_fps, (unsigned long)esp_get_free_heap_size(), current_tracking);
     xSemaphoreGive(counter_mutex);
     httpd_resp_set_type(req, "application/json");
@@ -68,13 +67,13 @@ static esp_err_t root_handler(httpd_req_t *req)
         "<h1>&#128663; Smart Traffic Counter</h1>"
         "<p class='sub'>ESP32-S3 &mdash; ESPDet-Pico 224&times;224</p>"
         "<div class='stats'>"
-        "<div class='stat'><div class='label'>Big Vehicles</div><div class='counter' id='big'>-</div></div>"
         "<div class='stat'><div class='label'>Cars</div><div class='counter' id='car'>-</div></div>"
         "<div class='stat'><div class='label'>Motorcycles</div><div class='counter' id='moto'>-</div></div>"
         "<div class='stat'><div class='label'>Total</div><div class='counter' id='total'>-</div></div>"
         "</div>"
         "<button onclick='resetCounters()'>Reset</button>"
         "<button onclick=\"window.location='/preview'\">Live Preview</button>"
+        "<button onclick=\"window.open('/debug_frame','_blank')\">Model Input (224px)</button>"
         "<div style='position:relative;display:inline-block;margin:16px 0;'>"
         "<img src='/stream' style='display:block;max-width:480px;width:100%;"
              "border:1px solid #30363d;border-radius:8px;'>"
@@ -90,7 +89,6 @@ static esp_err_t root_handler(httpd_req_t *req)
         "<script>"
         "function update(){"
         "fetch('/counts').then(r=>r.json()).then(d=>{"
-        "document.getElementById('big').textContent=d.big_vehicle;"
         "document.getElementById('car').textContent=d.car;"
         "document.getElementById('moto').textContent=d.motorcycle;"
         "document.getElementById('total').textContent=d.total;"
@@ -186,6 +184,29 @@ static esp_err_t preview_handler(httpd_req_t *req)
     return httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
 }
 
+static esp_err_t debug_frame_handler(httpd_req_t *req)
+{
+    if (!g_debug_mutex) {
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "No debug frame yet");
+        return ESP_FAIL;
+    }
+    if (xSemaphoreTake(g_debug_mutex, pdMS_TO_TICKS(500)) != pdTRUE) {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Busy");
+        return ESP_FAIL;
+    }
+    if (!g_debug_jpg_buf || g_debug_jpg_len == 0) {
+        xSemaphoreGive(g_debug_mutex);
+        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "No frame yet — wait a moment");
+        return ESP_FAIL;
+    }
+    httpd_resp_set_type(req, "image/jpeg");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    esp_err_t res = httpd_resp_send(req, (const char *)g_debug_jpg_buf, (ssize_t)g_debug_jpg_len);
+    xSemaphoreGive(g_debug_mutex);
+    return res;
+}
+
 void start_webserver(void)
 {
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
@@ -194,12 +215,13 @@ void start_webserver(void)
     cfg.stack_size       = 8192;
     if (httpd_start(&server, &cfg) != ESP_OK) return;
     httpd_uri_t uris[] = {
-        {"/",        HTTP_GET,  root_handler,    nullptr},
-        {"/counts",  HTTP_GET,  counts_handler,  nullptr},
-        {"/reset",   HTTP_POST, reset_handler,   nullptr},
-        {"/capture", HTTP_GET,  capture_handler, nullptr},
-        {"/stream",  HTTP_GET,  stream_handler,  nullptr},
-        {"/preview", HTTP_GET,  preview_handler, nullptr},
+        {"/",             HTTP_GET,  root_handler,        nullptr},
+        {"/counts",       HTTP_GET,  counts_handler,      nullptr},
+        {"/reset",        HTTP_POST, reset_handler,       nullptr},
+        {"/capture",      HTTP_GET,  capture_handler,     nullptr},
+        {"/stream",       HTTP_GET,  stream_handler,      nullptr},
+        {"/preview",      HTTP_GET,  preview_handler,     nullptr},
+        {"/debug_frame",  HTTP_GET,  debug_frame_handler, nullptr},
     };
     for (auto &u : uris) httpd_register_uri_handler(server, &u);
     ESP_LOGI(TAG, "HTTP server started");

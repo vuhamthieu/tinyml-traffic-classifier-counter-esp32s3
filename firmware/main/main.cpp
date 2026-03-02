@@ -61,9 +61,12 @@ static void grab_task(void *arg)
         }
 
         int actual_h = (fb->width > 0) ? (int)(fb->len / ((size_t)fb->width * 2)) : 0;
-        g_frame_valid[idx] = (actual_h >= 16);
+        // Reject truncated frames: a partial frame compared to a full previous
+        // frame produces near-100% motion → false shake → update_tracking blocked.
+        g_frame_valid[idx] = (actual_h == CAMERA_H);
         if (!g_frame_valid[idx]) {
-            ESP_LOGW(TAG, "Frame too small (%u B)", (unsigned)fb->len);
+            ESP_LOGW(TAG, "Truncated frame %ux%d (expected %d rows), skipping",
+                     (unsigned)fb->width, actual_h, CAMERA_H);
             esp_camera_fb_return(fb);
             xQueueSend(g_infer_q, &idx, portMAX_DELAY);
             continue;
@@ -148,6 +151,10 @@ static void infer_task(void *arg)
         auto &results = g_detector->run(img);
         int   inf_ms  = (int)((esp_timer_get_time() - t0) / 1000);
 
+        static uint32_t dbg_cnt = 0;
+        if ((++dbg_cnt % 30) == 0)
+            jpeg_encode_debug_frame(g_rgb888_buf[buf_idx], MODEL_W, MODEL_H);
+
         xQueueSend(g_free_q, &buf_idx, portMAX_DELAY);
 
         det_frames++; det_total += (int)results.size();
@@ -162,9 +169,8 @@ static void infer_task(void *arg)
         if (now - last_stats >= 10000000LL) {
             current_fps = (float)frame_count * 1e6f / (float)(now - last_stats);
             xSemaphoreTake(counter_mutex, portMAX_DELAY);
-            ESP_LOGW(TAG, "FPS=%.1f | Big=%lu Car=%lu Moto=%lu | tracks=%d | inf=%dms | dets=%d/10f motion=%d",
+            ESP_LOGW(TAG, "FPS=%.1f | Car=%lu Moto=%lu | tracks=%d | inf=%dms | dets=%d/10f motion=%d",
                      current_fps,
-                     (unsigned long)vehicle_counts[CLASS_BIG_VEHICLE],
                      (unsigned long)vehicle_counts[CLASS_CAR],
                      (unsigned long)vehicle_counts[CLASS_MOTORCYCLE],
                      num_tracked_objects, inf_ms,

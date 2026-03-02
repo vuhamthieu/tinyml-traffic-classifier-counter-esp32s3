@@ -17,11 +17,10 @@ void mqtt_publish_counts(void)
     char buf[128];
     xSemaphoreTake(counter_mutex, portMAX_DELAY);
     int len = snprintf(buf, sizeof(buf),
-        "{\"big_vehicle\":%lu,\"car\":%lu,\"motorcycle\":%lu,\"total\":%lu}",
-        (unsigned long)vehicle_counts[CLASS_BIG_VEHICLE],
+        "{\"car\":%lu,\"motorcycle\":%lu,\"total\":%lu}",
         (unsigned long)vehicle_counts[CLASS_CAR],
         (unsigned long)vehicle_counts[CLASS_MOTORCYCLE],
-        (unsigned long)(vehicle_counts[0] + vehicle_counts[1] + vehicle_counts[2]));
+        (unsigned long)(vehicle_counts[CLASS_CAR] + vehicle_counts[CLASS_MOTORCYCLE]));
     xSemaphoreGive(counter_mutex);
     esp_mqtt_client_publish(g_mqtt, MQTT_TOPIC_COUNTS, buf, len, 0, 0);
 }
