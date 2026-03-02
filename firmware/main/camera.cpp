@@ -23,7 +23,7 @@ bool camera_init(void)
         .pixel_format = PIXFORMAT_RGB565,
         .frame_size   = FRAMESIZE_240X240,
         .jpeg_quality = 12,
-        .fb_count     = 1,
+        .fb_count     = 2,
         .fb_location  = CAMERA_FB_IN_PSRAM,
         .grab_mode    = CAMERA_GRAB_LATEST,
     };
@@ -67,7 +67,11 @@ IRAM_ATTR void rgb565_to_rgb888_gray(
             int col = ox + ((x * sc) >> FP);
             if (col >= src_w) col = src_w - 1;
             const uint8_t *p = srow + col * 2;
+#if CAMERA_RGB565_BIG_ENDIAN
+            uint16_t px = (uint16_t)((p[0] << 8) | p[1]);
+#else
             uint16_t px = (uint16_t)(p[0] | (p[1] << 8));
+#endif
             uint8_t r = (uint8_t)((px >> 8) & 0xF8u);
             uint8_t g = (uint8_t)((px >> 3) & 0xFCu);
             uint8_t b = (uint8_t)((px << 3) & 0xF8u);
