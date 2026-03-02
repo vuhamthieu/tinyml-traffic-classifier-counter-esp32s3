@@ -26,25 +26,53 @@
 #define MODEL_W     224
 #define MODEL_H     224
 
-#define CLASS_BIG_VEHICLE   0
-#define CLASS_CAR           1
-#define CLASS_MOTORCYCLE    2
-#define NUM_CLASSES         3
+// OV3660 RGB565 byte order coming from esp_camera frame buffer.
+// 1 = big-endian (MSB first), 0 = little-endian (LSB first)
+// ESP-DL examples typically assume big-endian RGB565 on ESP32-S3.
+#define CAMERA_RGB565_BIG_ENDIAN 1
 
-#define SCORE_THR_BIG    0.75f
-#define SCORE_THR_CAR    0.55f
-#define SCORE_THR_MOTO   0.60f
-#define NMS_THR          0.45f
+// 2-class model: car=0, motorcycle=1
+#define CLASS_CAR           0
+#define CLASS_MOTORCYCLE    1
+#define NUM_CLASSES         2
 
-#define TRACK_TIMEOUT_FRAMES    8
-#define TRACK_MATCH_DISTANCE    100
-#define TRACK_EXCLUSION_RADIUS  28
+#define SCORE_THR_CAR    0.20f
+#define SCORE_THR_MOTO   0.36f
+#define NMS_THR          0.40f
+
+#define TRACK_TIMEOUT_FRAMES    18   // 3 s at 6 FPS — track survives brief detection gaps
+#define TRACK_MATCH_DISTANCE    96   
+#define TRACK_EXCLUSION_RADIUS  18
 #define MAX_TRACKED_OBJECTS     24
+// Prevent an already-counted track from absorbing a following vehicle.
+// If a counted track is farther than this from a new detection, force spawn.
+#define COUNTED_TRACK_MATCH_DISTANCE 42
 
-#define COUNT_LINE_Y        (MODEL_H / 2)
-#define COUNT_LINE_DEADZONE 12
+// Presence-based counting: vehicle is counted once confirmed inside this band.
+// Wide band (56-168 px) = 75 % of frame height — fast vehicles at 6 FPS can never skip over it.
+#define COUNT_ZONE_TOP    (MODEL_H / 4)        // = 56 px
+#define COUNT_ZONE_BOTTOM (MODEL_H * 3 / 4)   // = 168 px
+#define COUNT_MIN_TRAVEL      8.0f   // lower for far/small vehicles so they can be counted earlier
+#define COUNT_MIN_DETECTIONS  2      // faster confirmation to improve recall
 
 #define MOTION_CELL_SIZE   8
 #define MOTION_GRID_W      (MODEL_W / MOTION_CELL_SIZE)
 #define MOTION_GRID_H      (MODEL_H / MOTION_CELL_SIZE)
 #define MOTION_DIFF_THRESH 15
+
+// Detection quality filters
+#define DETECT_MIN_BOX_AREA   110    // allow smaller distant vehicles
+#define MOTO_RECLASSIFY_AREA  260    // only very tiny "car" boxes are remapped to motorcycle
+#define MOTO_TO_CAR_RECLASSIFY_AREA 1600 // large "motorcycle" boxes are remapped to car
+#define MOTO_TO_CAR_RECLASSIFY_MIN_W 24  // and width is sufficiently car-like
+#define FAST_COUNT_MIN_TRAVEL 18.0f  // allow earlier edge fast-count for fast vehicles
+
+// Ghost-track suppressor: a track matched ≥ GHOST_FRAMES times but moved
+// less than GHOST_TRAVEL pixels from its spawn is a static background
+// false positive and is silently discarded.
+#define GHOST_FRAMES_THRESHOLD  10     // detections before ghost verdict (kill static FPs faster)
+#define GHOST_TRAVEL_THRESHOLD  25.0f  // px — must have moved at least this far
+// Display suppression kicks in sooner: hide a track after GHOST_DISP_FRAMES
+// consecutive detections with travel < GHOST_TRAVEL_THRESHOLD so the box
+// disappears from the overlay quickly without waiting for full expiry.
+#define GHOST_DISP_FRAMES       8      // ~1.3 s at 6 FPS
