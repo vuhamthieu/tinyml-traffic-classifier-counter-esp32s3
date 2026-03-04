@@ -7,6 +7,8 @@ idf_component_register(SRCS
                            "jpeg_stream.cpp"
                            "wifi.cpp"
                            "mqtt.cpp"
+                           "telemetry.cpp"
+                           "lora.cpp"
                            "http_server.cpp"
                        INCLUDE_DIRS "."
                        REQUIRES
