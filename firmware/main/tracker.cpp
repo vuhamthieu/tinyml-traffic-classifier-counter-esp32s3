@@ -152,16 +152,13 @@ void update_tracking(const std::list<dl::detect::result_t> &results,
             tk.box[2] = (int)(BA * det.box[2] + (1.f - BA) * tk.box[2]);
             tk.box[3] = (int)(BA * det.box[3] + (1.f - BA) * tk.box[3]);
 
-            // Presence-based counting: fire once the vehicle is confirmed inside
-            // the zone.
-            //   confirmed — dc >= COUNT_MIN_DETECTIONS rejects single-frame flickers.
-            //   moved     — travel >= COUNT_MIN_TRAVEL (12 px) distinguishes real
-            //               motion from static background FPs (jitter ≤5 px).
-            // Shake is already gated in main.cpp before calling this fn.
-            bool in_zone  = (tk.y >= COUNT_ZONE_TOP && tk.y <= COUNT_ZONE_BOTTOM);
+            // Line-crossing counting: count when the centroid crosses
+            // COUNT_LINE_Y from above to below (vehicle moving downward).
+            // Much more robust than zone-based counting at low FPS.
+            bool crossed_line = (tk.prev_y <= COUNT_LINE_Y && tk.y > COUNT_LINE_Y);
             bool confirmed = (tk.detection_count >= COUNT_MIN_DETECTIONS);
             bool moved     = (tk.travel >= COUNT_MIN_TRAVEL);
-            if (!tk.counted && in_zone && confirmed && moved) {
+            if (!tk.counted && crossed_line && confirmed && moved) {
                 tk.counted = true;
                 int count_class = tk.class_id;
                 int cbw = tk.box[2] - tk.box[0];
