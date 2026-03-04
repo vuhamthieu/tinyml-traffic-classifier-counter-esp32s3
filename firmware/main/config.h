@@ -51,10 +51,10 @@
 // Prevent an already-counted track from absorbing a following vehicle.
 // If a counted track is farther than this from a new detection, force spawn.
 #define COUNTED_TRACK_MATCH_DISTANCE 42
-#define COUNT_LINE_Y      (MODEL_H * 3 / 8)    // = 84 px
+#define COUNT_LINE_Y      (MODEL_H * 3 / 8)   
 // Legacy zone boundaries kept for fast-count edge heuristic reference.
-#define COUNT_ZONE_TOP    (MODEL_H / 4)        // = 56 px
-#define COUNT_ZONE_BOTTOM (MODEL_H * 3 / 4)   // = 168 px
+#define COUNT_ZONE_TOP    (MODEL_H / 4)      
+#define COUNT_ZONE_BOTTOM (MODEL_H * 3 / 4)  
 #define COUNT_MIN_TRAVEL      8.0f   // lower for far/small vehicles so they can be counted earlier
 #define COUNT_MIN_DETECTIONS  2      // faster confirmation to improve recall
 
@@ -64,17 +64,17 @@
 #define MOTION_DIFF_THRESH 15
 
 // Detection quality filters
-#define DETECT_MIN_BOX_AREA   110    // allow smaller distant vehicles
-#define MOTO_RECLASSIFY_AREA  260    // only very tiny "car" boxes are remapped to motorcycle
-#define MOTO_TO_CAR_RECLASSIFY_AREA 1600 // large "motorcycle" boxes are remapped to car
-#define MOTO_TO_CAR_RECLASSIFY_MIN_W 24  // and width is sufficiently car-like
-#define FAST_COUNT_MIN_TRAVEL 18.0f  // allow earlier edge fast-count for fast vehicles
+#define DETECT_MIN_BOX_AREA   110    
+#define MOTO_RECLASSIFY_AREA  260   
+#define MOTO_TO_CAR_RECLASSIFY_AREA 1600 
+#define MOTO_TO_CAR_RECLASSIFY_MIN_W 24 
+#define FAST_COUNT_MIN_TRAVEL 18.0f  
 
 // Ghost-track suppressor: a track matched ≥ GHOST_FRAMES times but moved
 // less than GHOST_TRAVEL pixels from its spawn is a static background
 // false positive and is silently discarded.
-#define GHOST_FRAMES_THRESHOLD  10     // detections before ghost verdict (kill static FPs faster)
-#define GHOST_TRAVEL_THRESHOLD  25.0f  // px — must have moved at least this far
+#define GHOST_FRAMES_THRESHOLD  10     
+#define GHOST_TRAVEL_THRESHOLD  25.0f  
 // Display suppression kicks in sooner: hide a track after GHOST_DISP_FRAMES
 // consecutive detections with travel < GHOST_TRAVEL_THRESHOLD so the box
 // disappears from the overlay quickly without waiting for full expiry.
