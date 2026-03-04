@@ -24,6 +24,7 @@
 #include "jpeg_stream.h"
 #include "wifi.h"
 #include "mqtt.h"
+#include "telemetry.h"
 #include "http_server.h"
 
 static const char *TAG = "TRAFFIC";
@@ -43,7 +44,7 @@ static dl::detect::DetectWrapper *g_detector = nullptr;
 static void on_vehicle_counted(int class_id, uint32_t new_count)
 {
     (void)class_id; (void)new_count;
-    mqtt_publish_counts();
+    telemetry_publish_counts();
 }
 
 static void grab_task(void *arg)
@@ -62,7 +63,7 @@ static void grab_task(void *arg)
 
         int actual_h = (fb->width > 0) ? (int)(fb->len / ((size_t)fb->width * 2)) : 0;
         // Reject truncated frames: a partial frame compared to a full previous
-        // frame produces near-100% motion → false shake → update_tracking blocked.
+        // frame produces near-100% motion -> false shake -> update_tracking blocked.
         g_frame_valid[idx] = (actual_h == CAMERA_H);
         if (!g_frame_valid[idx]) {
             ESP_LOGW(TAG, "Truncated frame %ux%d (expected %d rows), skipping",
@@ -177,7 +178,7 @@ static void infer_task(void *arg)
                      (det_frames > 0 ? det_total * 10 / det_frames : 0),
                      active_cells);
             xSemaphoreGive(counter_mutex);
-            mqtt_publish_status();
+            telemetry_publish_status();
             det_frames = 0; det_total = 0;
             frame_count = 0;
             last_stats  = now;
@@ -210,7 +211,7 @@ extern "C" void app_main(void)
 
     wifi_init();
     vTaskDelay(pdMS_TO_TICKS(3000));
-    // mqtt_init(); 
+    telemetry_init();
     start_webserver();
 
     esp_task_wdt_config_t wdt = {.timeout_ms = 20000, .idle_core_mask = 0, .trigger_panic = false};
