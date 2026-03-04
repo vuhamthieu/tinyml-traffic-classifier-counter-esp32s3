@@ -4,6 +4,11 @@
 #define MQTT_TOPIC_COUNTS "traffic/counts"
 #define MQTT_TOPIC_STATUS "traffic/status"
 
+// Telemetry transport selection
+// LoRa bring-up mode: disable MQTT until broker path is configured.
+#define TELEMETRY_USE_MQTT 0
+#define TELEMETRY_USE_LORA 0
+
 #define PWDN_GPIO_NUM   -1
 #define RESET_GPIO_NUM  -1
 #define XCLK_GPIO_NUM   15
@@ -28,7 +33,6 @@
 
 // OV3660 RGB565 byte order coming from esp_camera frame buffer.
 // 1 = big-endian (MSB first), 0 = little-endian (LSB first)
-// ESP-DL examples typically assume big-endian RGB565 on ESP32-S3.
 #define CAMERA_RGB565_BIG_ENDIAN 1
 
 // 2-class model: car=0, motorcycle=1
@@ -36,20 +40,19 @@
 #define CLASS_MOTORCYCLE    1
 #define NUM_CLASSES         2
 
-#define SCORE_THR_CAR    0.20f
-#define SCORE_THR_MOTO   0.36f
+#define SCORE_THR_CAR    0.20f 
+#define SCORE_THR_MOTO   0.25f
 #define NMS_THR          0.40f
 
-#define TRACK_TIMEOUT_FRAMES    18   // 3 s at 6 FPS — track survives brief detection gaps
+#define TRACK_TIMEOUT_FRAMES    18   
 #define TRACK_MATCH_DISTANCE    96   
 #define TRACK_EXCLUSION_RADIUS  18
 #define MAX_TRACKED_OBJECTS     24
 // Prevent an already-counted track from absorbing a following vehicle.
 // If a counted track is farther than this from a new detection, force spawn.
 #define COUNTED_TRACK_MATCH_DISTANCE 42
-
-// Presence-based counting: vehicle is counted once confirmed inside this band.
-// Wide band (56-168 px) = 75 % of frame height — fast vehicles at 6 FPS can never skip over it.
+#define COUNT_LINE_Y      (MODEL_H * 3 / 8)    // = 84 px
+// Legacy zone boundaries kept for fast-count edge heuristic reference.
 #define COUNT_ZONE_TOP    (MODEL_H / 4)        // = 56 px
 #define COUNT_ZONE_BOTTOM (MODEL_H * 3 / 4)   // = 168 px
 #define COUNT_MIN_TRAVEL      8.0f   // lower for far/small vehicles so they can be counted earlier
