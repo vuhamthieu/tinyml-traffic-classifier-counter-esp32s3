@@ -48,7 +48,7 @@ dependencies:
   espressif/esp32-camera:
     dependencies: []
     source:
-      path: /home/vuhamthieu/Projects/AIoT/tinyml-traffic-classifier-counter-esp32s3/firmware/components/espressif__esp32-camera
+      path: /home/vuhamthieu/Projects/AIoT/tinyml-traffic-classifier-counter-esp32s3/node_a_camera/components/espressif__esp32-camera
       type: local
     version: 2.1.5
   espressif/esp_jpeg:

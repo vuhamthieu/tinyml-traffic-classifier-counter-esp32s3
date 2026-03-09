@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "node_a_camera"
+		},
+		{
+			"path": "node_b_gateway"
+		}
+	],
+	"settings": {}
+}
