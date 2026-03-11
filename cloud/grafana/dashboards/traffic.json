@@ -1,0 +1,365 @@
+{
+  "uid": "traffic-counter-main",
+  "title": "Traffic Counter — Real-Time Dashboard",
+  "description": "TinyML Vehicle Detection & Counting System — ESP32-S3 + LoRa + MQTT",
+  "tags": ["traffic", "iot", "tinyml", "lora"],
+  "timezone": "Asia/Ho_Chi_Minh",
+  "refresh": "5s",
+  "time": { "from": "now-1h", "to": "now" },
+  "fiscalYearStartMonth": 0,
+  "liveNow": true,
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Vehicles Counted",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "influxdb", "uid": "" },
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"counts\" and r._field == \"total\")\n  |> last()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Vehicle Breakdown",
+      "type": "stat",
+      "gridPos": { "h": 5, "w": 18, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "car" }, "properties": [{ "id": "displayName", "value": "🚗 Car" }] },
+          { "matcher": { "id": "byName", "options": "truck" }, "properties": [{ "id": "displayName", "value": "🚚 Truck" }] },
+          { "matcher": { "id": "byName", "options": "bus" }, "properties": [{ "id": "displayName", "value": "🚌 Bus" }] },
+          { "matcher": { "id": "byName", "options": "motorcycle" }, "properties": [{ "id": "displayName", "value": "🏍️ Motorcycle" }] }
+        ]
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "horizontal"
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"counts\")\n  |> filter(fn: (r) => r._field == \"car\" or r._field == \"truck\" or r._field == \"bus\" or r._field == \"motorcycle\")\n  |> last()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Vehicle Counts Over Time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 20,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "lineWidth": 2,
+            "stacking": { "mode": "none" }
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "car" }, "properties": [{ "id": "displayName", "value": "🚗 Car" }] },
+          { "matcher": { "id": "byName", "options": "truck" }, "properties": [{ "id": "displayName", "value": "🚚 Truck" }] },
+          { "matcher": { "id": "byName", "options": "bus" }, "properties": [{ "id": "displayName", "value": "🚌 Bus" }] },
+          { "matcher": { "id": "byName", "options": "motorcycle" }, "properties": [{ "id": "displayName", "value": "🏍️ Motorcycle" }] },
+          { "matcher": { "id": "byName", "options": "total" }, "properties": [{ "id": "displayName", "value": "Total" }, { "id": "custom.lineWidth", "value": 3 }] }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["lastNotNull", "max"] }
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"counts\")\n  |> filter(fn: (r) => r._field == \"car\" or r._field == \"truck\" or r._field == \"bus\" or r._field == \"motorcycle\" or r._field == \"total\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "LoRa Signal Quality (RSSI)",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 13 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "pointSize": 4,
+            "showPoints": "auto",
+            "lineWidth": 2
+          },
+          "unit": "dBm",
+          "min": -140,
+          "max": -30,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": -120 },
+              { "color": "green", "value": -90 }
+            ]
+          },
+          "custom.thresholdsStyle": { "mode": "line" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r._field == \"rssi\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "LoRa SNR",
+      "type": "timeseries",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 13 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 15,
+            "pointSize": 4,
+            "showPoints": "auto",
+            "lineWidth": 2
+          },
+          "unit": "dB",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": -5 },
+              { "color": "green", "value": 5 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r._field == \"snr\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Gateway Health — Node B",
+      "type": "table",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "heap" }, "properties": [{ "id": "unit", "value": "bytes" }] },
+          { "matcher": { "id": "byName", "options": "wifi_rssi" }, "properties": [{ "id": "unit", "value": "dBm" }] },
+          { "matcher": { "id": "byName", "options": "uptime_s" }, "properties": [{ "id": "unit", "value": "s" }] }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "_time", "desc": true }]
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"health\")\n  |> filter(fn: (r) => r._field == \"heap\" or r._field == \"wifi_rssi\" or r._field == \"uptime_s\" or r._field == \"lora_rx_total\" or r._field == \"mqtt_pub\" or r._field == \"mqtt_fail\")\n  |> last()\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "MQTT Publish vs Fail",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "mqtt_pub" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }, { "id": "displayName", "value": "Published" }] },
+          { "matcher": { "id": "byName", "options": "mqtt_fail" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }, { "id": "displayName", "value": "Failed" }] }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"health\")\n  |> filter(fn: (r) => r._field == \"mqtt_pub\" or r._field == \"mqtt_fail\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "System Uptime",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 26 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "yellow", "value": null },
+              { "color": "green", "value": 300 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"health\" and r._field == \"uptime_s\")\n  |> last()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "ESP8266 Free Heap",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 26 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "max": 81920,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 15000 },
+              { "color": "green", "value": 30000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"health\" and r._field == \"heap\")\n  |> last()",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "WiFi Signal (Gateway)",
+      "type": "gauge",
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 26 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dBm",
+          "min": -100,
+          "max": -20,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": -80 },
+              { "color": "green", "value": -60 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: -5m)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"health\" and r._field == \"wifi_rssi\")\n  |> last()",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": { "list": [] },
+  "links": []
+}

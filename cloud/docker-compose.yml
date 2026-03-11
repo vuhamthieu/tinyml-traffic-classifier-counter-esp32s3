@@ -1,79 +1,58 @@
 services:
 
-  # ── MQTT Broker (Eclipse Mosquitto) ─────────────────────────────────────────
-  # The ESP32-S3 publishes to:
-  #   traffic/counts  — JSON on every vehicle count event
-  #   traffic/status  — JSON every 10 s (fps, heap, tracking)
-  #
-  # Test with:
-  #   docker compose exec mosquitto mosquitto_sub -t 'traffic/#' -v
-  # ─────────────────────────────────────────────────────────────────────────────
-  mosquitto:
-    image: eclipse-mosquitto:2
-    container_name: traffic_mqtt
+  influxdb:
+    image: influxdb:2
+    container_name: traffic_influxdb
     restart: unless-stopped
     ports:
-      - "1883:1883"     # MQTT (ESP32-S3 connects here — put this host's IP in main.cpp)
-      - "9001:9001"     # MQTT over WebSocket (Node-RED, browser clients)
+      - "8086:8086"
     volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - mosquitto_data:/mosquitto/data
-      - mosquitto_log:/mosquitto/log
-
-  # ── Flow-based dashboard + MQTT subscriber (Node-RED) ────────────────────────
-  # Open http://localhost:1880 to build dashboards and processing flows.
-  # Comes with a pre-installed MQTT palette — drag a "mqtt in" node and subscribe
-  # to  traffic/#  to start receiving counts in real time.
-  # ─────────────────────────────────────────────────────────────────────────────
-  nodered:
-    image: nodered/node-red:latest
-    container_name: traffic_nodered
-    restart: unless-stopped
-    ports:
-      - "1880:1880"
-    volumes:
-      - nodered_data:/data
-    depends_on:
-      - mosquitto
+      - influxdb_data:/var/lib/influxdb2
     environment:
-      - TZ=Asia/Ho_Chi_Minh
+      DOCKER_INFLUXDB_INIT_MODE:     setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: traffic2026
+      DOCKER_INFLUXDB_INIT_ORG:      traffic_org
+      DOCKER_INFLUXDB_INIT_BUCKET:   vehicle_counts
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: traffic-super-secret-token
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # ── (Optional) InfluxDB time-series database ─────────────────────────────────
-  # Uncomment if you want to store historical count data.
-  # Connect Node-RED → InfluxDB using the node-red-contrib-influxdb palette.
-  # ─────────────────────────────────────────────────────────────────────────────
-  # influxdb:
-  #   image: influxdb:2
-  #   container_name: traffic_influxdb
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8086:8086"
-  #   volumes:
-  #     - influxdb_data:/var/lib/influxdb2
-  #   environment:
-  #     - DOCKER_INFLUXDB_INIT_MODE=setup
-  #     - DOCKER_INFLUXDB_INIT_USERNAME=admin
-  #     - DOCKER_INFLUXDB_INIT_PASSWORD=password
-  #     - DOCKER_INFLUXDB_INIT_ORG=traffic
-  #     - DOCKER_INFLUXDB_INIT_BUCKET=vehicle_counts
+  telegraf:
+    image: telegraf:latest
+    container_name: traffic_telegraf
+    restart: unless-stopped
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      HIVEMQ_HOST:     ${HIVEMQ_HOST}
+      HIVEMQ_USER:     ${HIVEMQ_USER}
+      HIVEMQ_PASSWORD: ${HIVEMQ_PASSWORD}
 
-  # ── (Optional) Grafana dashboard ─────────────────────────────────────────────
-  # Uncomment together with InfluxDB for time-series visualisation.
-  # ─────────────────────────────────────────────────────────────────────────────
-  # grafana:
-  #   image: grafana/grafana:latest
-  #   container_name: traffic_grafana
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - grafana_data:/var/lib/grafana
-  #   depends_on:
-  #     - influxdb
+  grafana:
+    image: grafana/grafana:latest
+    container_name: traffic_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER:     admin
+      GF_SECURITY_ADMIN_PASSWORD: traffic2026
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/traffic.json
 
 volumes:
-  mosquitto_data:
-  mosquitto_log:
-  nodered_data:
-  # influxdb_data:
-  # grafana_data:
+  influxdb_data:
+  grafana_data:
