@@ -26,6 +26,7 @@
 #include "mqtt.h"
 #include "telemetry.h"
 #include "http_server.h"
+#include "lora.h"
 
 static const char *TAG = "TRAFFIC";
 
@@ -188,6 +189,21 @@ static void infer_task(void *arg)
 
 extern "C" void app_main(void)
 {
+#if LORA_TEST_MODE
+    {
+        ESP_LOGW(TAG, "*** LORA_TEST_MODE enabled – sending pings ***");
+        esp_err_t r = nvs_flash_init();
+        if (r == ESP_ERR_NVS_NO_FREE_PAGES || r == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+            ESP_ERROR_CHECK(nvs_flash_erase());
+            r = nvs_flash_init();
+        }
+        ESP_ERROR_CHECK(r);
+        lora_init();
+        lora_test_ping_loop(); 
+        return;
+    }
+#endif
+
     ESP_LOGI(TAG, "Smart Traffic Counter (ESP-DL ESPDet-Pico)");
     ESP_LOGI(TAG, "Heap: %lu  PSRAM: %lu",
              (unsigned long)esp_get_free_heap_size(),

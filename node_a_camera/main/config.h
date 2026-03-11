@@ -4,10 +4,26 @@
 #define MQTT_TOPIC_COUNTS "traffic/counts"
 #define MQTT_TOPIC_STATUS "traffic/status"
 
-// Telemetry transport selection
-// LoRa bring-up mode: disable MQTT until broker path is configured.
+// Telemetry transport selection.
 #define TELEMETRY_USE_MQTT 0
-#define TELEMETRY_USE_LORA 0
+#define TELEMETRY_USE_LORA 1
+
+// LoRa SX1278 wiring.
+#define LORA_PIN_SCK    40
+#define LORA_PIN_MISO   39
+#define LORA_PIN_MOSI   38
+#define LORA_PIN_NSS    42
+#define LORA_PIN_RST    21
+#define LORA_PIN_DIO0   14
+
+// Set to 1 for the standalone LoRa ping test.
+#define LORA_TEST_MODE  1
+
+#define LORA_FREQ_HZ        433000000UL
+#define LORA_BW_INDEX       7
+#define LORA_SF             7
+#define LORA_CR_DENOM       5
+#define LORA_SYNC_WORD      0x12
 
 #define PWDN_GPIO_NUM   -1
 #define RESET_GPIO_NUM  -1
