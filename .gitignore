@@ -19,3 +19,7 @@ __pycache__/
 *.mov
 *.h264
 *.jpg
+
+# --- Secrets & Environment ---
+cloud/.env
+node_b_gateway/include/secrets.h
