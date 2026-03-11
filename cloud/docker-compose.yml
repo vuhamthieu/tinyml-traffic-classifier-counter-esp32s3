@@ -9,12 +9,12 @@ services:
     volumes:
       - influxdb_data:/var/lib/influxdb2
     environment:
-      DOCKER_INFLUXDB_INIT_MODE:     setup
-      DOCKER_INFLUXDB_INIT_USERNAME: admin
-      DOCKER_INFLUXDB_INIT_PASSWORD: traffic2026
-      DOCKER_INFLUXDB_INIT_ORG:      traffic_org
-      DOCKER_INFLUXDB_INIT_BUCKET:   vehicle_counts
-      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: traffic-super-secret-token
+      DOCKER_INFLUXDB_INIT_MODE:        setup
+      DOCKER_INFLUXDB_INIT_USERNAME:    admin
+      DOCKER_INFLUXDB_INIT_PASSWORD:    ${INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG:         traffic_org
+      DOCKER_INFLUXDB_INIT_BUCKET:      vehicle_counts
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
     healthcheck:
       test: ["CMD", "influx", "ping"]
       interval: 10s
@@ -34,6 +34,7 @@ services:
       HIVEMQ_HOST:     ${HIVEMQ_HOST}
       HIVEMQ_USER:     ${HIVEMQ_USER}
       HIVEMQ_PASSWORD: ${HIVEMQ_PASSWORD}
+      INFLUXDB_TOKEN:  ${INFLUXDB_TOKEN}
 
   grafana:
     image: grafana/grafana:latest
@@ -50,8 +51,9 @@ services:
         condition: service_healthy
     environment:
       GF_SECURITY_ADMIN_USER:     admin
-      GF_SECURITY_ADMIN_PASSWORD: traffic2026
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/traffic.json
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
 
 volumes:
   influxdb_data:

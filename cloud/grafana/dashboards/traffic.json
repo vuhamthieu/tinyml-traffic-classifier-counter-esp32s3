@@ -56,8 +56,6 @@
         },
         "overrides": [
           { "matcher": { "id": "byName", "options": "car" }, "properties": [{ "id": "displayName", "value": "🚗 Car" }] },
-          { "matcher": { "id": "byName", "options": "truck" }, "properties": [{ "id": "displayName", "value": "🚚 Truck" }] },
-          { "matcher": { "id": "byName", "options": "bus" }, "properties": [{ "id": "displayName", "value": "🚌 Bus" }] },
           { "matcher": { "id": "byName", "options": "motorcycle" }, "properties": [{ "id": "displayName", "value": "🏍️ Motorcycle" }] }
         ]
       },

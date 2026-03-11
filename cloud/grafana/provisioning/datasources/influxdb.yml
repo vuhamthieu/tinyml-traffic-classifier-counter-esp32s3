@@ -10,6 +10,6 @@ datasources:
       organization: traffic_org
       defaultBucket: vehicle_counts
     secureJsonData:
-      token: traffic-super-secret-token
+      token: $INFLUXDB_TOKEN
     isDefault: true
     editable: true
