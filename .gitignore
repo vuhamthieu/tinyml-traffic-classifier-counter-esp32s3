@@ -24,3 +24,5 @@ __pycache__/
 cloud/.env
 node_b_gateway/include/secrets.h
 node_a_camera/main/secrets.h
+
+docs/project-notes.md

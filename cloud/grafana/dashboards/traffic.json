@@ -12,7 +12,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Total Vehicles Counted",
+      "title": "Total Vehicles (Car + Motorcycle)",
       "type": "stat",
       "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
       "fieldConfig": {
@@ -39,14 +39,14 @@
       "targets": [
         {
           "datasource": { "type": "influxdb", "uid": "" },
-          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"counts\" and r._field == \"total\")\n  |> last()",
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"data\")\n  |> filter(fn: (r) => r._field == \"car\" or r._field == \"motorcycle\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({ _time: r._time, _value: (if exists r.car then float(v: r.car) else 0.0) + (if exists r.motorcycle then float(v: r.motorcycle) else 0.0), _field: \"vehicles_total\" }))\n  |> last()",
           "refId": "A"
         }
       ]
     },
     {
       "id": 2,
-      "title": "Vehicle Breakdown",
+      "title": "Vehicle Breakdown (Car & Motorcycle)",
       "type": "stat",
       "gridPos": { "h": 5, "w": 18, "x": 6, "y": 0 },
       "fieldConfig": {
@@ -69,14 +69,14 @@
       },
       "targets": [
         {
-          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"counts\")\n  |> filter(fn: (r) => r._field == \"car\" or r._field == \"truck\" or r._field == \"bus\" or r._field == \"motorcycle\")\n  |> last()",
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"data\")\n  |> filter(fn: (r) => r._field == \"car\" or r._field == \"motorcycle\")\n  |> last()",
           "refId": "A"
         }
       ]
     },
     {
       "id": 3,
-      "title": "Vehicle Counts Over Time",
+      "title": "Vehicle Counts Over Time (Car & Motorcycle)",
       "type": "timeseries",
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 5 },
       "fieldConfig": {
@@ -95,10 +95,7 @@
         },
         "overrides": [
           { "matcher": { "id": "byName", "options": "car" }, "properties": [{ "id": "displayName", "value": "🚗 Car" }] },
-          { "matcher": { "id": "byName", "options": "truck" }, "properties": [{ "id": "displayName", "value": "🚚 Truck" }] },
-          { "matcher": { "id": "byName", "options": "bus" }, "properties": [{ "id": "displayName", "value": "🚌 Bus" }] },
-          { "matcher": { "id": "byName", "options": "motorcycle" }, "properties": [{ "id": "displayName", "value": "🏍️ Motorcycle" }] },
-          { "matcher": { "id": "byName", "options": "total" }, "properties": [{ "id": "displayName", "value": "Total" }, { "id": "custom.lineWidth", "value": 3 }] }
+          { "matcher": { "id": "byName", "options": "motorcycle" }, "properties": [{ "id": "displayName", "value": "🏍️ Motorcycle" }] }
         ]
       },
       "options": {
@@ -107,7 +104,7 @@
       },
       "targets": [
         {
-          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"counts\")\n  |> filter(fn: (r) => r._field == \"car\" or r._field == \"truck\" or r._field == \"bus\" or r._field == \"motorcycle\" or r._field == \"total\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
+          "query": "from(bucket: \"vehicle_counts\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"traffic\" and r.type == \"data\")\n  |> filter(fn: (r) => r._field == \"car\" or r._field == \"motorcycle\")\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)",
           "refId": "A"
         }
       ]

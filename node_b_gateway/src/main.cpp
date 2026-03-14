@@ -20,6 +20,7 @@ constexpr int  LORA_TX_POWER_DBM            = 17;
 constexpr int LORA_PIN_NSS  = 5;   // D1
 constexpr int LORA_PIN_RST  = 16;  // D0
 constexpr int LORA_PIN_DIO0 = 4;   // D2
+constexpr size_t MAX_LORA_PAYLOAD_BYTES        = 220;
 
 constexpr unsigned long WIFI_RETRY_INTERVAL_MS     = 5000;
 constexpr unsigned long MQTT_RETRY_INTERVAL_MS     = 5000;
@@ -60,10 +61,10 @@ void mqttConnect() {
   lastMqttAttemptMs = now;
 
   Serial.printf("[MQTT] Connecting to %s:%d ...\n", MQTT_BROKER, MQTT_PORT);
-  String clientId = "node_b_gw_";
-  clientId += String(ESP.getChipId(), HEX);
+  char clientId[24];
+  snprintf(clientId, sizeof(clientId), "node_b_gw_%06X", ESP.getChipId());
 
-  if (mqtt.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD)) {
+  if (mqtt.connect(clientId, MQTT_USER, MQTT_PASSWORD)) {
     Serial.println(F("[MQTT] Connected!"));
     JsonDocument doc;
     doc["node"]   = "node_b";
@@ -80,14 +81,14 @@ void mqttConnect() {
   }
 }
 
-void publishLoRaPacket(const String &payload, long rssi, float snr) {
+void publishLoRaPacket(const char *payload, size_t payloadLen, long rssi, float snr) {
   if (!mqtt.connected()) { mqttFailCount++; return; }
 
   JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, payload);
+  DeserializationError err = deserializeJson(doc, payload, payloadLen);
   if (err) {
     Serial.printf("[MQTT] JSON parse error: %s\n", err.c_str());
-    if (mqtt.publish(MQTT_TOPIC_RAW, payload.c_str())) mqttPubCount++;
+    if (mqtt.publish(MQTT_TOPIC_RAW, payload, payloadLen)) mqttPubCount++;
     else mqttFailCount++;
     return;
   }
@@ -102,7 +103,7 @@ void publishLoRaPacket(const String &payload, long rssi, float snr) {
 
   const char *type  = doc["type"] | "unknown";
   const char *topic = MQTT_TOPIC_RAW;
-  if (strcmp(type, "counts") == 0)      topic = MQTT_TOPIC_COUNTS;
+  if (strcmp(type, "counts") == 0 || strcmp(type, "data") == 0) topic = MQTT_TOPIC_COUNTS;
   else if (strcmp(type, "status") == 0) topic = MQTT_TOPIC_STATUS;
   else if (strcmp(type, "boot") == 0)   topic = MQTT_TOPIC_STATUS;
 
@@ -134,7 +135,9 @@ void publishGatewayHealth() {
 
   char buf[320];
   serializeJson(doc, buf, sizeof(buf));
-  mqtt.publish(MQTT_TOPIC_GATEWAY, buf);
+  if (!mqtt.publish(MQTT_TOPIC_GATEWAY, buf)) {
+    mqttFailCount++;
+  }
   Serial.printf("[HEALTH] heap=%u wifi=%ddBm rx=%lu pub=%lu fail=%lu\n",
                 ESP.getFreeHeap(), WiFi.RSSI(), rxCount, mqttPubCount, mqttFailCount);
 }
@@ -221,6 +224,8 @@ void setup() {
 
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   mqtt.setBufferSize(512);
+  mqtt.setKeepAlive(30);
+  mqtt.setSocketTimeout(5);
   mqttConnect();
 
   digitalWrite(LED_BUILTIN, HIGH);
@@ -235,9 +240,18 @@ void loop() {
 
   int packetSize = LoRa.parsePacket();
   if (packetSize > 0) {
-    String payload;
-    payload.reserve(packetSize);
-    while (LoRa.available()) payload += static_cast<char>(LoRa.read());
+    if (packetSize > static_cast<int>(MAX_LORA_PAYLOAD_BYTES)) {
+      while (LoRa.available()) LoRa.read();
+      mqttFailCount++;
+      Serial.printf("[LORA RX] Dropped oversize packet: %d B\n", packetSize);
+      delay(2);
+      return;
+    }
+
+    char payload[MAX_LORA_PAYLOAD_BYTES + 1];
+    size_t readLen = LoRa.readBytes(payload, packetSize);
+    while (LoRa.available()) LoRa.read();
+    payload[readLen] = '\0';
 
     long rssi  = LoRa.packetRssi();
     float snr  = LoRa.packetSnr();
@@ -245,8 +259,8 @@ void loop() {
 
     Serial.printf("[LORA RX] #%lu %dB rssi=%ld snr=%.1f\n",
                   rxCount, packetSize, rssi, snr);
-    Serial.printf("  %s\n", payload.c_str());
-    publishLoRaPacket(payload, rssi, snr);
+    Serial.printf("  %s\n", payload);
+    publishLoRaPacket(payload, readLen, rssi, snr);
   } else {
     unsigned long now = millis();
     if (now - lastIdleLogMs >= IDLE_LOG_INTERVAL_MS) {

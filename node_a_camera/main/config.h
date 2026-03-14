@@ -17,7 +17,7 @@
 #define LORA_PIN_DIO0   14
 
 // Set to 1 for the standalone LoRa ping test.
-#define LORA_TEST_MODE  1
+#define LORA_TEST_MODE  0
 
 #define LORA_FREQ_HZ        433000000UL
 #define LORA_BW_INDEX       7

@@ -205,15 +205,19 @@ void lora_init(void)
 void lora_publish_counts(void)
 {
     if (!g_lora_ready) return;
-    char buf[160];
+    char buf[192];
     xSemaphoreTake(counter_mutex, portMAX_DELAY);
     const unsigned long car = (unsigned long)vehicle_counts[CLASS_CAR];
     const unsigned long moto = (unsigned long)vehicle_counts[CLASS_MOTORCYCLE];
     xSemaphoreGive(counter_mutex);
 
     snprintf(buf, sizeof(buf),
-             "{\"node\":\"node_a\",\"type\":\"counts\",\"seq\":%lu,\"car\":%lu,\"motorcycle\":%lu,\"total\":%lu}",
-             (unsigned long)g_boot_seq++, car, moto, car + moto);
+             "{\"node\":\"node_a\",\"type\":\"data\",\"seq\":%lu,\"fps\":%.1f,\"heap\":%lu,\"car\":%lu,\"motorcycle\":%lu}",
+             (unsigned long)g_boot_seq++,
+             current_fps,
+             (unsigned long)esp_get_free_heap_size(),
+             car,
+             moto);
     lora_send_packet(buf);
 }
 
