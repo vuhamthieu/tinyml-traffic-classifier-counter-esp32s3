@@ -39,6 +39,10 @@ flowchart LR
 4. Telegraf consumes MQTT topics and writes normalized measurements to InfluxDB v2.
 5. Grafana queries InfluxDB for dashboard visualization locally and through Tailscale.
 
+## Video Demonstration
+
+![Traffic Demo](node_a_camera/docs/traffic.gif)
+
 ## AI Model & Edge Vision Pipeline
 
 ### Model Design and Optimization
