@@ -41,7 +41,7 @@ flowchart LR
 
 ## Video Demonstration
 
-![Traffic Demo](node_a_camera/docs/traffic.gif)
+![Traffic Demo](docs/media/traffic.gif)
 
 ## AI Model & Edge Vision Pipeline
 
