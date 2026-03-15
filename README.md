@@ -48,6 +48,7 @@ flowchart LR
 ### Model Design and Optimization
 
 - Base detector: custom YOLOv11 micro/nano variant trained for traffic counting scenes.
+- Training performance (best weights): **mAP50 = 0.963**, **mAP50-95 = 0.713** (car: 0.981 / moto: 0.953).
 - Deployment optimization: Post-Training Quantization (PTQ) to INT8 to satisfy ESP32-S3 memory and compute constraints.
 - Inference target: embedded execution using ESP32-S3 SRAM/PSRAM budget with deterministic runtime behavior.
 
