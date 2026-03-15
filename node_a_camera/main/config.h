@@ -4,6 +4,8 @@
 #define MQTT_TOPIC_COUNTS "traffic/counts"
 #define MQTT_TOPIC_STATUS "traffic/status"
 
+#define ENABLE_DEBUG_STREAM 0
+
 // Telemetry transport selection.
 #define TELEMETRY_USE_MQTT 0
 #define TELEMETRY_USE_LORA 1

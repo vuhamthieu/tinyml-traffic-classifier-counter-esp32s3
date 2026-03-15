@@ -21,12 +21,15 @@
 #include "motion.h"
 #include "tracker.h"
 #include "overlay.h"
-#include "jpeg_stream.h"
-#include "wifi.h"
 #include "mqtt.h"
 #include "telemetry.h"
-#include "http_server.h"
 #include "lora.h"
+
+#if ENABLE_DEBUG_STREAM
+#include "jpeg_stream.h"
+#include "wifi.h"
+#include "http_server.h"
+#endif
 
 static const char *TAG = "TRAFFIC";
 
@@ -34,7 +37,9 @@ static const char *TAG = "TRAFFIC";
 
 static uint8_t *g_rgb888_buf[NUM_BUFS]    = {nullptr, nullptr};
 static uint8_t *g_gray_buf[NUM_BUFS]      = {nullptr, nullptr};
+#if ENABLE_DEBUG_STREAM
 static uint8_t *g_raw_frame_buf[NUM_BUFS] = {nullptr, nullptr};
+#endif
 static bool     g_frame_valid[NUM_BUFS]   = {true, true};
 
 static QueueHandle_t g_free_q  = nullptr;
@@ -78,12 +83,14 @@ static void grab_task(void *arg)
                               g_rgb888_buf[idx], g_gray_buf[idx],
                               MODEL_W, MODEL_H);
 
+#if ENABLE_DEBUG_STREAM
         static uint32_t jpeg_cnt = 0;
         if (g_stream_active && g_raw_frame_buf[idx] && ((++jpeg_cnt & 1) == 0)) {
             memcpy(g_raw_frame_buf[idx], fb->buf, fb->len);
             draw_overlay(g_raw_frame_buf[idx], fb->width, actual_h);
             jpeg_stream_encode(g_raw_frame_buf[idx], fb->len, fb->width, actual_h);
         }
+#endif
 
         esp_camera_fb_return(fb);
         xQueueSend(g_infer_q, &idx, portMAX_DELAY);
@@ -99,8 +106,10 @@ static void infer_task(void *arg)
             MODEL_W * MODEL_H * 3, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
         g_gray_buf[i] = (uint8_t *)heap_caps_malloc(
             MODEL_W * MODEL_H, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#if ENABLE_DEBUG_STREAM
         g_raw_frame_buf[i] = (uint8_t *)heap_caps_malloc(
             CAMERA_W * CAMERA_H * 2, MALLOC_CAP_SPIRAM);
+#endif
         if (!g_rgb888_buf[i] || !g_gray_buf[i]) {
             ESP_LOGE(TAG, "PSRAM alloc failed slot %d", i);
             vTaskDelete(NULL); return;
@@ -153,9 +162,11 @@ static void infer_task(void *arg)
         auto &results = g_detector->run(img);
         int   inf_ms  = (int)((esp_timer_get_time() - t0) / 1000);
 
+#if ENABLE_DEBUG_STREAM
         static uint32_t dbg_cnt = 0;
         if ((++dbg_cnt % 30) == 0)
             jpeg_encode_debug_frame(g_rgb888_buf[buf_idx], MODEL_W, MODEL_H);
+#endif
 
         xQueueSend(g_free_q, &buf_idx, portMAX_DELAY);
 
@@ -217,7 +228,9 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     counter_mutex = xSemaphoreCreateMutex();
+#if ENABLE_DEBUG_STREAM
     jpeg_stream_init();
+#endif
     g_free_q  = xQueueCreate(NUM_BUFS, sizeof(uint8_t));
     g_infer_q = xQueueCreate(NUM_BUFS, sizeof(uint8_t));
 
@@ -225,14 +238,22 @@ extern "C" void app_main(void)
 
     tracker_set_count_callback(on_vehicle_counted);
 
+#if ENABLE_DEBUG_STREAM
     wifi_init();
     vTaskDelay(pdMS_TO_TICKS(3000));
+#endif
     telemetry_init();
+#if ENABLE_DEBUG_STREAM
     start_webserver();
+#endif
 
     esp_task_wdt_config_t wdt = {.timeout_ms = 20000, .idle_core_mask = 0, .trigger_panic = false};
     esp_task_wdt_reconfigure(&wdt);
 
     xTaskCreatePinnedToCore(infer_task, "infer", 32768, NULL, 5, NULL, 1);
+#if ENABLE_DEBUG_STREAM
     ESP_LOGW(TAG, "Ready — http://<device-ip>/");
+#else
+    ESP_LOGW(TAG, "Ready — LoRa-only production mode (debug stream disabled)");
+#endif
 }
