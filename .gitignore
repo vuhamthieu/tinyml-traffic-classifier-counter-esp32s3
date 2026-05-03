@@ -26,3 +26,12 @@ node_b_gateway/include/secrets.h
 node_a_camera/main/secrets.h
 
 docs/project-notes.md
+
+# --- Database & Local Env ---
+telemetry.db
+frontend/.env*
+!frontend/.env.example
+
+# --- Local DB & Env ---
+telemetry.db
+frontend/.env.local
