@@ -2,21 +2,37 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const baseUrl = process.env.NEXT_INTERNAL_API_URL || "http://192.168.1.170:8000";
+    // 1. Clean the Base URL and ensure it points to the correct endpoint
+    let baseUrl = process.env.NEXT_INTERNAL_API_URL || "http://192.168.1.170:8000";
+    baseUrl = baseUrl.replace(/\/+$/, ""); // Remove any trailing slashes to prevent 404s like `//api/telemetry`
+    const targetUrl = `${baseUrl}/api/telemetry`;
+
+    // 2. Read the secret key and prepare headers
+    const apiKey = process.env.FASTAPI_SECRET_KEY || "";
     
-    const response = await fetch(`${baseUrl}/api/telemetry`, {
+    // Log a warning if running in production without keys configured
+    if (!apiKey && process.env.NODE_ENV === "production") {
+      console.warn("[WARN] FASTAPI_SECRET_KEY is not set in Vercel Environment Variables. FastAPI will return 403 Forbidden.");
+    }
+
+    const response = await fetch(targetUrl, {
       headers: {
         "Accept": "application/json",
-        "X-API-Key": process.env.FASTAPI_SECRET_KEY || "",
+        // The backend `APIKeyHeader(name="X-API-Key")` looks exactly for this header:
+        "X-API-Key": apiKey,
         "ngrok-skip-browser-warning": "true",
       },
       // Prevent Next.js from aggressively caching this real-time request
       cache: "no-store",
     });
 
+    // 3. Handle and pass JSON response properly
     if (!response.ok) {
+      const errorText = await response.text().catch(() => "Unknown error");
+      console.error(`[BFF Proxy Error]: Backend returned ${response.status}. Details: ${errorText}`);
+      
       return NextResponse.json(
-        { error: `Backend returned ${response.status}` },
+        { error: `Backend returned ${response.status}`, details: errorText },
         { status: response.status }
       );
     }
