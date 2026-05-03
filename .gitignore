@@ -35,3 +35,7 @@ frontend/.env*
 # --- Local DB & Env ---
 telemetry.db
 frontend/.env.local
+
+# --- Root Env ---
+.env
+*.env
