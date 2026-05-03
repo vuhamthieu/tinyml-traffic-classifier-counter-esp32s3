@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: iot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-iot_telemetry}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-LocalDevPassword123}
+    # Explicitly omitting 'ports' so the database is NOT exposed to the host machine.
+    # It will only be accessible from inside the 'iot_network' by other containers.
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - iot_network
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: iot_mosquitto
+    restart: unless-stopped
+    ports:
+      # Expose port 1883 for physical ESP32 nodes to connect
+      - "1883:1883"
+    volumes:
+      - ./legacy_grafana_stack/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    networks:
+      - iot_network
+
+  fastapi_backend:
+    build: ./backend
+    container_name: iot_fastapi_backend
+    restart: unless-stopped
+    ports:
+      # Expose port 8000 so the Next.js frontend can connect
+      - "8000:8000"
+    environment:
+      # Route MQTT to the internal mosquitto container name
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=traffic/counts
+      # Route DB to the internal postgres container name
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-LocalDevPassword123}@postgres:5432/${POSTGRES_DB:-iot_telemetry}
+    depends_on:
+      - postgres
+      - mosquitto
+    networks:
+      - iot_network
+
+volumes:
+  postgres_data:
+
+networks:
+  iot_network:
+    driver: bridge
