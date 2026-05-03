@@ -1,12 +1,24 @@
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
-#include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <LoRa.h>
 #include <SPI.h>
 #include <time.h>
 #include "secrets.h"
+
+// -------------------------------
+// Local-lab override (bypass HiveMQ Cloud ACL/TLS)
+// -------------------------------
+#undef MQTT_BROKER
+#undef MQTT_PORT
+#undef MQTT_USER
+#undef MQTT_PASSWORD
+#define MQTT_BROKER   "192.168.1.170"
+#define MQTT_PORT     1883
+#define MQTT_USER     ""
+#define MQTT_PASSWORD ""
 
 namespace {
 
@@ -28,7 +40,7 @@ constexpr unsigned long GATEWAY_HEALTH_INTERVAL_MS = 30000;
 constexpr unsigned long IDLE_LOG_INTERVAL_MS       = 10000;
 constexpr unsigned long LED_BLINK_INTERVAL_MS      = 1000;
 
-BearSSL::WiFiClientSecure espClient;
+WiFiClient espClient;
 PubSubClient mqtt(espClient);
 
 unsigned long lastWifiAttemptMs   = 0;
@@ -64,7 +76,12 @@ void mqttConnect() {
   char clientId[24];
   snprintf(clientId, sizeof(clientId), "node_b_gw_%06X", ESP.getChipId());
 
-  if (mqtt.connect(clientId, MQTT_USER, MQTT_PASSWORD)) {
+  const bool hasCreds = (MQTT_USER[0] != '\0');
+  const bool ok = hasCreds
+                    ? mqtt.connect(clientId, MQTT_USER, MQTT_PASSWORD)
+                    : mqtt.connect(clientId);
+
+  if (ok) {
     Serial.println(F("[MQTT] Connected!"));
     JsonDocument doc;
     doc["node"]   = "node_b";
@@ -201,26 +218,7 @@ void setup() {
     Serial.println(F("[WIFI] Not yet — will retry"));
   }
 
-  configTime(7 * 3600, 0, "pool.ntp.org", "time.nist.gov");
-  Serial.print(F("[NTP] Syncing"));
-  time_t now = time(nullptr);
-  unsigned long ntpStart = millis();
-  while (now < 100000 && millis() - ntpStart < 10000) {
-    delay(250); Serial.print('.');
-    now = time(nullptr);
-  }
-  Serial.println();
-  if (now > 100000) {
-    struct tm ti;
-    localtime_r(&now, &ti);
-    Serial.printf("[NTP] OK  %04d-%02d-%02d %02d:%02d:%02d\n",
-                  ti.tm_year+1900, ti.tm_mon+1, ti.tm_mday,
-                  ti.tm_hour, ti.tm_min, ti.tm_sec);
-  } else {
-    Serial.println(F("[NTP] Timeout — TLS may fail"));
-  }
-
-  espClient.setInsecure();
+  // TLS/NTP is intentionally skipped in local-lab (port 1883).
 
   mqtt.setServer(MQTT_BROKER, MQTT_PORT);
   mqtt.setBufferSize(512);
