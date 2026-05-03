@@ -375,7 +375,7 @@ app = FastAPI(title="Vehicle Telemetry Bridge", lifespan=lifespan)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def get_api_key(api_key: str = Depends(api_key_header)):
-    expected_key = os.environ.get("API_KEY", "MatKhauSieuKho123")
+    expected_key = os.environ.get("API_KEY", "local-dev-api-key")
     if not api_key or api_key != expected_key:
         raise HTTPException(status_code=403, detail="Forbidden")
     return api_key
