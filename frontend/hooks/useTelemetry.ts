@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
+import { useEffect, useState } from "react";
 
 const TelemetryRowSchema = z.object({
   id: z.number(),
@@ -17,24 +18,67 @@ const TelemetryResponseSchema = z.array(TelemetryRowSchema);
 
 export type TelemetryRow = z.infer<typeof TelemetryRowSchema>;
 
-async function fetchTelemetry(): Promise<TelemetryRow[]> {
-  // Fetch from the local Next.js BFF API route proxy
-  const res = await fetch("/api/get-telemetry", {
-    headers: { Accept: "application/json" },
-  });
+const CACHE_KEY = "lastKnownTelemetry";
 
-  if (!res.ok) {
-    throw new Error(`Telemetry fetch failed: ${res.status} ${res.statusText}`);
+// Retrieve and properly typecast cached telemetry parsing stringified dates into JS Date objects
+function getCachedTelemetry(): TelemetryRow[] | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (raw) {
+      return TelemetryResponseSchema.parse(JSON.parse(raw));
+    }
+  } catch (error) {
+    console.error("Failed to parse cached telemetry:", error);
   }
-
-  const json: unknown = await res.json();
-  return TelemetryResponseSchema.parse(json);
+  return undefined;
 }
 
 export function useTelemetry() {
-  return useQuery({
+  const [cachedData, setCachedData] = useState<TelemetryRow[] | undefined>(undefined);
+
+  // 5. Initial Mount: Load from localStorage instantly
+  useEffect(() => {
+    const data = getCachedTelemetry();
+    if (data) {
+      setCachedData(data);
+    }
+  }, []);
+
+  const query = useQuery({
     queryKey: ["telemetry"],
-    queryFn: fetchTelemetry,
+    // 1. Fail-Fast: Disable automatic retries to quickly show Offline state
+    retry: 0,
+    queryFn: async ({ signal }) => {
+      // Fail-fast timeout configuration
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      signal?.addEventListener("abort", () => controller.abort());
+
+      try {
+        const res = await fetch("/api/get-telemetry", {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+
+        if (!res.ok) {
+          throw new Error(`Telemetry fetch failed: ${res.status} ${res.statusText}`);
+        }
+
+        const json: unknown = await res.json();
+        const parsed = TelemetryResponseSchema.parse(json);
+
+        // 2. Safe LocalStorage Persistence
+        if (typeof window !== "undefined") {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(parsed));
+          setCachedData(parsed); // Sync our local state with the latest successfully fetched data
+        }
+
+        return parsed;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    },
     refetchInterval: () => {
       if (typeof document === "undefined") return false;
       return document.visibilityState === "visible" ? 2000 : false;
@@ -44,4 +88,15 @@ export function useTelemetry() {
     refetchOnReconnect: true,
     refetchIntervalInBackground: false,
   });
+
+  // 3. Offline Fallback Logic: Always fallback to localStorage state if the network goes down
+  const activeData = query.data ?? cachedData;
+
+  return {
+    data: activeData,
+    // Provide a unified view to ensure the spinner accurately disappears instantly
+    isLoading: query.isLoading && !activeData,
+    isError: query.isError,
+    error: query.error,
+  };
 }
