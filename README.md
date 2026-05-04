@@ -27,14 +27,15 @@ graph LR
         LRX[LoRa RX] --> MW[MQTT over WiFi]
     end
 
-    subgraph Cloud Backend
+    subgraph Backend Local Server
         MQ[MQTT Broker] --> FA[FastAPI Endpoint]
         FA --> DB[(PostgreSQL)]
+        FA -.->|Ngrok Tunnel| NGR[Public URL]
     end
 
-    subgraph Web Frontend
+    subgraph Web Frontend Vercel
         DB -.->|SQL date_trunc & sum| FA
-        FA -.-> NJ[Next.js App Router]
+        NGR -.->|REST API| NJ[Next.js App Router]
         NJ --> R[Recharts Dashboard]
     end
 
