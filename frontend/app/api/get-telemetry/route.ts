@@ -4,7 +4,7 @@ export async function GET() {
   try {
     // 1. Clean the Base URL and ensure it points to the correct endpoint
     let baseUrl = process.env.NEXT_INTERNAL_API_URL || "http://192.168.1.170:8000";
-    baseUrl = baseUrl.replace(/\/+$/, ""); // Remove any trailing slashes to prevent 404s like `//api/telemetry`
+    baseUrl = baseUrl.replace(/\/+$/, ""); 
     const targetUrl = `${baseUrl}/api/telemetry`;
 
     // 2. Read the secret key and prepare headers
@@ -18,11 +18,9 @@ export async function GET() {
     const response = await fetch(targetUrl, {
       headers: {
         "Accept": "application/json",
-        // The backend `APIKeyHeader(name="X-API-Key")` looks exactly for this header:
         "X-API-Key": apiKey,
         "ngrok-skip-browser-warning": "true",
       },
-      // Prevent Next.js from aggressively caching this real-time request
       cache: "no-store",
     });
 
