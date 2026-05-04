@@ -13,19 +13,28 @@ export default function Home() {
   const { data, isLoading, isError, error, dataUpdatedAt } = useTelemetry(range);
   const [secondsAgo, setSecondsAgo] = useState(0);
 
-  const isLive = !isError;
   const hasData = data && data.length > 0;
   const latestData = hasData ? data[data.length - 1] : null;
+  const [isEdgeLive, setIsEdgeLive] = useState(false);
 
   // Heartbeat Indicator
   useEffect(() => {
-    if (!dataUpdatedAt) return;
-    const interval = setInterval(() => {
-      setSecondsAgo(Math.floor((Date.now() - dataUpdatedAt) / 1000));
-    }, 1000);
-    setSecondsAgo(Math.floor((Date.now() - dataUpdatedAt) / 1000));
+    const evaluateLiveness = () => {
+      if (dataUpdatedAt) {
+        setSecondsAgo(Math.floor((Date.now() - dataUpdatedAt) / 1000));
+      }
+      if (latestData && latestData.timestamp) {
+        const latestTime = new Date(latestData.timestamp).getTime();
+        setIsEdgeLive((Date.now() - latestTime) <= 15000);
+      } else {
+        setIsEdgeLive(false);
+      }
+    };
+    
+    evaluateLiveness();
+    const interval = setInterval(evaluateLiveness, 1000);
     return () => clearInterval(interval);
-  }, [dataUpdatedAt]);
+  }, [dataUpdatedAt, latestData]);
 
   // CSV Export logic
   const handleExportCSV = () => {
@@ -100,12 +109,12 @@ export default function Home() {
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
               <Activity className="w-4 h-4" /> Edge Status
             </div>
-            <div className={`text-lg font-semibold flex items-center gap-2 ${isLive ? 'text-green-500' : 'text-red-500'}`}>
+            <div className={`text-lg font-semibold flex items-center gap-2 ${isEdgeLive ? 'text-green-500' : 'text-red-500'}`}>
               <span className="relative flex h-3 w-3">
-                {isLive && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                <span className={`relative inline-flex rounded-full h-3 w-3 ${isLive ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                {isEdgeLive && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${isEdgeLive ? 'bg-green-500' : 'bg-red-500'}`}></span>
               </span>
-              {isLive ? 'Connected' : 'Offline'}
+              {isEdgeLive ? 'Connected' : 'Offline'}
             </div>
           </div>
           
