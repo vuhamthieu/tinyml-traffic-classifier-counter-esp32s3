@@ -183,7 +183,7 @@ export default function Home() {
               [ Data Offline ]
             </div>
           ) : (
-            <Zone2Traffic data={data} />
+            <Zone2Traffic data={data} range={range} />
           )}
         </div>
       </section>

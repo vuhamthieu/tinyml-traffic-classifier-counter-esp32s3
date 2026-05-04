@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sqlalchemy import Column, DateTime, Float, Integer, String, create_engine
+from sqlalchemy import func, Column, DateTime, Float, Integer, String, create_engine
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -39,6 +39,8 @@ class VehicleTelemetry(Base):
     motorcycle = Column(Integer, nullable=False)
     rssi = Column(Integer, nullable=False)
     snr = Column(Float, nullable=False)
+    fps = Column(Float, nullable=True)
+    heap = Column(Integer, nullable=True)
 
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
 
@@ -55,6 +57,8 @@ class VehicleTelemetryIn(BaseModel):
     # RSSI/SNR have default values for backward compatibility with dev payloads.
     rssi: int = 0
     snr: float = 0.0
+    fps: Optional[float] = None
+    heap: Optional[int] = None
 
 
 class VehicleTelemetryOut(BaseModel):
@@ -65,6 +69,8 @@ class VehicleTelemetryOut(BaseModel):
     rssi: int
     snr: float
     timestamp: datetime
+    fps: Optional[float] = None
+    heap: Optional[int] = None
 
 
 # Enqueue incoming MQTT payloads for async database insertion.
@@ -322,6 +328,8 @@ class TelemetryBridge:
             motorcycle=payload.motorcycle,
             rssi=payload.rssi,
             snr=payload.snr,
+            fps=payload.fps,
+            heap=payload.heap,
             timestamp=_utcnow(),
         )
 
@@ -441,6 +449,8 @@ def get_last_telemetry(
             motorcycle=r.motorcycle,
             rssi=r.rssi,
             snr=float(r.snr),
+            fps=float(r.fps) if r.fps is not None else None,
+            heap=r.heap,
             timestamp=r.timestamp,
         )
         for r in rows
