@@ -114,7 +114,7 @@ export default function Home() {
               <Cpu className="w-4 h-4" /> YOLO FPS
             </div>
             <div className="text-lg font-semibold">
-              {latestData?.fps ? `${latestData.fps} fps` : 'N/A'}
+              {latestData?.fps != null ? `${latestData.fps} fps` : 'N/A'}
             </div>
           </div>
 
@@ -123,7 +123,7 @@ export default function Home() {
               <Server className="w-4 h-4" /> Node Heap
             </div>
             <div className="text-lg font-semibold">
-              {latestData?.heap ? `${(latestData.heap / 1024).toFixed(1)} KB` : 'N/A'}
+              {latestData?.heap != null ? `${(latestData.heap / 1024).toFixed(1)} KB` : 'N/A'}
             </div>
           </div>
 

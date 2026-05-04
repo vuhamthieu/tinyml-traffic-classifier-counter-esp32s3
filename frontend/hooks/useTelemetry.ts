@@ -12,8 +12,8 @@ const TelemetryRowSchema = z.object({
   rssi: z.number(),
   snr: z.number(),
   timestamp: z.coerce.date(),
-  fps: z.number().optional(),
-  heap: z.number().optional(),
+  fps: z.number().nullable().optional(),
+  heap: z.number().nullable().optional(),
 });
 
 const TelemetryResponseSchema = z.array(TelemetryRowSchema);
