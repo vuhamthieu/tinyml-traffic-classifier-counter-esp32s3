@@ -20,9 +20,19 @@ export default function Zone1KPIs({ data }: { data: TelemetryRow[] }) {
     return best;
   }, [data]);
 
+  const totals = useMemo(() => {
+    return data.reduce(
+      (acc, curr) => ({
+        car: acc.car + (curr.car || 0),
+        motorcycle: acc.motorcycle + (curr.motorcycle || 0),
+      }),
+      { car: 0, motorcycle: 0 }
+    );
+  }, [data]);
+
   const kpis = [
-    { label: "Cars", value: latest ? formatNumber(latest.car) : "--" },
-    { label: "Motorcycles", value: latest ? formatNumber(latest.motorcycle) : "--" },
+    { label: "Cars", value: formatNumber(totals.car) },
+    { label: "Motorcycles", value: formatNumber(totals.motorcycle) },
     { label: "RSSI (dBm)", value: latest ? formatNumber(latest.rssi) : "--" },
     { label: "SNR (dB)", value: latest ? String(latest.snr.toFixed(1)) : "--" },
   ] as const;

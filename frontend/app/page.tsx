@@ -120,7 +120,7 @@ export default function Home() {
           
           <div className="rounded-lg border p-4 bg-card flex flex-col gap-1">
             <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Cpu className="w-4 h-4" /> YOLO FPS
+              <Cpu className="w-4 h-4" /> FPS
             </div>
             <div className="text-lg font-semibold">
               {latestData?.fps != null ? `${latestData.fps} fps` : 'N/A'}
