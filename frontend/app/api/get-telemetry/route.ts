@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const range = searchParams.get("range") || "live";
+
     // 1. Clean the Base URL and ensure it points to the correct endpoint
     let baseUrl = process.env.NEXT_INTERNAL_API_URL || "http://192.168.1.170:8000";
     baseUrl = baseUrl.replace(/\/+$/, ""); 
-    const targetUrl = `${baseUrl}/api/telemetry`;
+    const targetUrl = `${baseUrl}/api/telemetry?range=${range}`;
 
     // 2. Read the secret key and prepare headers
     const apiKey = process.env.FASTAPI_SECRET_KEY || "";

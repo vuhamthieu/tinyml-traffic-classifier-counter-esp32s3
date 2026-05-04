@@ -6,7 +6,7 @@ import ssl
 import threading
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
 import paho.mqtt.client as mqtt
@@ -292,8 +292,6 @@ class TelemetryBridge:
             try:
                 self._write_row(payload)
             except OperationalError:
-                # When Postgres drops connections (restart, network blip), retry a few
-                # times. Past that, we drop to keep the system responsive.
                 if retries < max_retries and not self._stop_event.is_set():
                     logger.warning(
                         "DB unavailable; requeueing telemetry (retry %s/%s)",
@@ -397,10 +395,20 @@ def health() -> dict[str, str]:
 
 @app.get("/api/telemetry", response_model=list[VehicleTelemetryOut])
 def get_last_telemetry(
+    range: Optional[str] = None,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
     api_key: str = Depends(get_api_key),
 ) -> list[VehicleTelemetryOut]:
+    # Handle range string
+    if range in ["24h", "7d", "30d"]:
+        now = _utcnow()
+        if range == "24h":
+            start_time = now - timedelta(hours=24)
+        elif range == "7d":
+            start_time = now - timedelta(days=7)
+        elif range == "30d":
+            start_time = now - timedelta(days=30)
     # Without a time filter we keep this endpoint cheap and predictable (last 20).
     # With a time filter we return the range so the UI can chart it.
     try:
@@ -413,8 +421,11 @@ def get_last_telemetry(
                 query = query.filter(VehicleTelemetry.timestamp <= _coerce_dt(end_time))
 
             if start_time is None and end_time is None:
-                rows = query.order_by(VehicleTelemetry.timestamp.desc()).limit(20).all()
+                # "live" or no range fallback to recent data (last 100 max)
+                rows = query.order_by(VehicleTelemetry.timestamp.desc()).limit(100).all()
+                rows.reverse() # Reverse so they are chronological for charts
             else:
+                # We have a time range, return ascending chronologically
                 rows = query.order_by(VehicleTelemetry.timestamp.asc()).all()
     except OperationalError:
         raise HTTPException(status_code=503, detail="Database unavailable")

@@ -12,6 +12,8 @@ const TelemetryRowSchema = z.object({
   rssi: z.number(),
   snr: z.number(),
   timestamp: z.coerce.date(),
+  fps: z.number().optional(),
+  heap: z.number().optional(),
 });
 
 const TelemetryResponseSchema = z.array(TelemetryRowSchema);
@@ -34,7 +36,7 @@ function getCachedTelemetry(): TelemetryRow[] | undefined {
   return undefined;
 }
 
-export function useTelemetry() {
+export function useTelemetry(range: string = "live") {
   const [cachedData, setCachedData] = useState<TelemetryRow[] | undefined>(undefined);
 
   // 5. Initial Mount: Load from localStorage instantly
@@ -46,7 +48,7 @@ export function useTelemetry() {
   }, []);
 
   const query = useQuery({
-    queryKey: ["telemetry"],
+    queryKey: ["telemetry", range],
     // 1. Fail-Fast: Disable automatic retries to quickly show Offline state
     retry: 0,
     queryFn: async ({ signal }) => {
@@ -56,7 +58,7 @@ export function useTelemetry() {
       signal?.addEventListener("abort", () => controller.abort());
 
       try {
-        const res = await fetch("/api/get-telemetry", {
+        const res = await fetch(`/api/get-telemetry?range=${range}`, {
           headers: { Accept: "application/json" },
           signal: controller.signal,
         });
@@ -81,7 +83,7 @@ export function useTelemetry() {
     },
     refetchInterval: () => {
       if (typeof document === "undefined") return false;
-      return document.visibilityState === "visible" ? 2000 : false;
+      return document.visibilityState === "visible" ? (range === 'live' ? 2000 : 30000) : false;
     },
     staleTime: 1500,
     refetchOnWindowFocus: true,
@@ -94,9 +96,9 @@ export function useTelemetry() {
 
   return {
     data: activeData,
-    // Provide a unified view to ensure the spinner accurately disappears instantly
     isLoading: query.isLoading && !activeData,
     isError: query.isError,
     error: query.error,
+    dataUpdatedAt: query.dataUpdatedAt,
   };
 }
