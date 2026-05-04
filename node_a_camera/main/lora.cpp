@@ -202,35 +202,18 @@ void lora_init(void)
     lora_send_packet(boot_msg);
 }
 
-void lora_publish_counts(void)
+void lora_publish_counts(uint32_t delta_car, uint32_t delta_moto)
 {
     if (!g_lora_ready) return;
     char buf[192];
-    xSemaphoreTake(counter_mutex, portMAX_DELAY);
-    const unsigned long car = (unsigned long)vehicle_counts[CLASS_CAR];
-    const unsigned long moto = (unsigned long)vehicle_counts[CLASS_MOTORCYCLE];
-    xSemaphoreGive(counter_mutex);
 
     snprintf(buf, sizeof(buf),
              "{\"node\":\"node_a\",\"type\":\"data\",\"seq\":%lu,\"fps\":%.1f,\"heap\":%lu,\"car\":%lu,\"motorcycle\":%lu}",
              (unsigned long)g_boot_seq++,
              current_fps,
              (unsigned long)esp_get_free_heap_size(),
-             car,
-             moto);
-    lora_send_packet(buf);
-}
-
-void lora_publish_status(void)
-{
-    if (!g_lora_ready) return;
-    char buf[192];
-    snprintf(buf, sizeof(buf),
-             "{\"node\":\"node_a\",\"type\":\"status\",\"seq\":%lu,\"fps\":%.1f,\"heap\":%lu,\"tracking\":%d}",
-             (unsigned long)g_boot_seq++,
-             current_fps,
-             (unsigned long)esp_get_free_heap_size(),
-             current_tracking);
+             (unsigned long)delta_car,
+             (unsigned long)delta_moto);
     lora_send_packet(buf);
 }
 

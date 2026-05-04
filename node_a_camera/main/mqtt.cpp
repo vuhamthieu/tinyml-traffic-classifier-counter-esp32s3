@@ -11,28 +11,18 @@ static const char *TAG = "MQTT";
 static esp_mqtt_client_handle_t g_mqtt          = nullptr;
 static volatile bool            g_mqtt_connected = false;
 
-void mqtt_publish_counts(void)
+void mqtt_publish_all(uint32_t delta_car, uint32_t delta_moto)
 {
     if (!g_mqtt || !g_mqtt_connected) return;
-    char buf[128];
-    xSemaphoreTake(counter_mutex, portMAX_DELAY);
+    char buf[256];
+    
     int len = snprintf(buf, sizeof(buf),
-        "{\"car\":%lu,\"motorcycle\":%lu,\"total\":%lu}",
-        (unsigned long)vehicle_counts[CLASS_CAR],
-        (unsigned long)vehicle_counts[CLASS_MOTORCYCLE],
-        (unsigned long)(vehicle_counts[CLASS_CAR] + vehicle_counts[CLASS_MOTORCYCLE]));
-    xSemaphoreGive(counter_mutex);
+        "{\"type\":\"data\",\"car\":%lu,\"motorcycle\":%lu,\"fps\":%.1f,\"heap\":%lu}",
+        (unsigned long)delta_car,
+        (unsigned long)delta_moto,
+        current_fps, 
+        (unsigned long)esp_get_free_heap_size());
     esp_mqtt_client_publish(g_mqtt, MQTT_TOPIC_COUNTS, buf, len, 0, 0);
-}
-
-void mqtt_publish_status(void)
-{
-    if (!g_mqtt || !g_mqtt_connected) return;
-    char buf[160];
-    int len = snprintf(buf, sizeof(buf),
-        "{\"fps\":%.1f,\"free_heap\":%lu,\"tracking\":%d}",
-        current_fps, (unsigned long)esp_get_free_heap_size(), current_tracking);
-    esp_mqtt_client_publish(g_mqtt, MQTT_TOPIC_STATUS, buf, len, 0, 0);
 }
 
 static void mqtt_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
@@ -41,7 +31,7 @@ static void mqtt_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
         case MQTT_EVENT_CONNECTED:
             g_mqtt_connected = true;
             ESP_LOGW(TAG, "MQTT connected");
-            mqtt_publish_counts();
+            // Do not publish immediately upon connect since we want true deltas
             break;
         case MQTT_EVENT_DISCONNECTED:
             g_mqtt_connected = false;

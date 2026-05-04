@@ -2,6 +2,7 @@
 #include "config.h"
 #include "mqtt.h"
 #include "lora.h"
+#include "tracker.h"
 
 void telemetry_init(void)
 {
@@ -13,22 +14,26 @@ void telemetry_init(void)
 #endif
 }
 
-void telemetry_publish_counts(void)
+void telemetry_publish_all(void)
 {
-#if TELEMETRY_USE_MQTT
-    mqtt_publish_counts();
-#endif
-#if TELEMETRY_USE_LORA
-    lora_publish_counts();
-#endif
-}
+    static uint32_t last_sent_car = 0;
+    static uint32_t last_sent_moto = 0;
 
-void telemetry_publish_status(void)
-{
+    xSemaphoreTake(counter_mutex, portMAX_DELAY);
+    uint32_t current_car = vehicle_counts[CLASS_CAR];
+    uint32_t current_moto = vehicle_counts[CLASS_MOTORCYCLE];
+    xSemaphoreGive(counter_mutex);
+
+    uint32_t delta_car = current_car - last_sent_car;
+    uint32_t delta_moto = current_moto - last_sent_moto;
+
+    last_sent_car = current_car;
+    last_sent_moto = current_moto;
+
 #if TELEMETRY_USE_MQTT
-    mqtt_publish_status();
+    mqtt_publish_all(delta_car, delta_moto);
 #endif
 #if TELEMETRY_USE_LORA
-    lora_publish_status();
+    lora_publish_counts(delta_car, delta_moto);
 #endif
 }

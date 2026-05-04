@@ -50,7 +50,7 @@ static dl::detect::DetectWrapper *g_detector = nullptr;
 static void on_vehicle_counted(int class_id, uint32_t new_count)
 {
     (void)class_id; (void)new_count;
-    telemetry_publish_counts();
+    // Decoupled:transmit will not be done immediately
 }
 
 static void grab_task(void *arg)
@@ -179,7 +179,7 @@ static void infer_task(void *arg)
 
         frame_count++;
         int64_t now = esp_timer_get_time();
-        if (now - last_stats >= 10000000LL) {
+        if (now - last_stats >= 5000000LL) {
             current_fps = (float)frame_count * 1e6f / (float)(now - last_stats);
             xSemaphoreTake(counter_mutex, portMAX_DELAY);
             ESP_LOGW(TAG, "FPS=%.1f | Car=%lu Moto=%lu | tracks=%d | inf=%dms | dets=%d/10f motion=%d",
@@ -190,7 +190,7 @@ static void infer_task(void *arg)
                      (det_frames > 0 ? det_total * 10 / det_frames : 0),
                      active_cells);
             xSemaphoreGive(counter_mutex);
-            telemetry_publish_status();
+            telemetry_publish_all();
             det_frames = 0; det_total = 0;
             frame_count = 0;
             last_stats  = now;
