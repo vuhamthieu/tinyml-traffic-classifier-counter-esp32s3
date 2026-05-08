@@ -9,7 +9,7 @@
 #include "secrets.h"
 
 // -------------------------------
-// Local-lab override (bypass HiveMQ Cloud ACL/TLS)
+// Local MQTT Broker Configuration
 // -------------------------------
 #undef MQTT_BROKER
 #undef MQTT_PORT
